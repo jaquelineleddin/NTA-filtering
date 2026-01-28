@@ -1,0 +1,13 @@
+Package: NTAWorkflow
+Type: Package
+Title: Processing of non target data measured by LC-MS
+Version: 0.1.7
+Author: Analytical Applied Chemistry, University Duisburg-Essen
+Maintainer: Jaqueline Leddin <jaqueline.leddin@uni-due.de>
+Description: Creates plots to determine thresholds, to filter out data with less quality. Exports text files for postprocessing with MetaboAnalyst. 
+License: private
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 2.10)

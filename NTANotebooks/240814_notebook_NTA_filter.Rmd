@@ -1,0 +1,268 @@
+---
+title: "NTA Workflow - Data Processing"
+output: pdf_document
+---
+
+This notebook uses functions for data processing of non-target analysis. First we need to load some extra libraries. One the right side, click on "Packages" and check gridExtra, ggplot2 and NTA Workflow. If the names are not in the list, they haven't been installed yet. In the same panel click on "Install". For the source use "Reprository (CRAN)", except for NTAWorkflow. Here you install from "Package Archive File" and browse for the path of the tar.gz file on your storage device.
+
+Instead of checking the packages on the right side one can run the following cell with the green play button on top right side.
+
+```{r setup}
+library(ggplot2)
+library(gridExtra)
+library(NTAWorkflow) # Version 0.1.6!!!
+```
+
+# First part: Create overview plots of raw data
+
+## Load data
+
+In the following cell replace **filename** with the path of your .txt, which you exported from MSDail, e.g. *"C:/Users/Jaqueline/Projects/NTA/Data/area_cells_neg.txt"*. Instead of the whole path you can use a so-called relative path, that begins with your working directory, where your R Project file (.Rproj) is. You can see the working directory on the right panel, if you click on *Files* or over the *Console* at the bottom. E.g. the working directory is *"C:/Users/Jaqueline/Projects/NTA"*, then the filename is only replaced by *"Data/area_cells_neg.txt"*.
+
+The text file coming from MSDial normally begins with four incomplete rows, that will be skipped with **skip = 4**. Sometimes there are two or four added columns at the end. They can be skipped by **drop_last_cols = 2** or **4**. The parameter **dec** describes the decimal separator.
+
+After running the following cell on the top right side, a data frame *raw_data* will appear. If you click on the name, RStudio will show you the content of the table like in Excel.
+
+```{r load data}
+
+fn_in <- "Daten/Test_231222/Area_cells_neg_test.txt"
+raw_data <- load_data(fn_in, skip = 4, drop_last_cols = 4, dec = ".", sep = "\t")
+```
+
+## Sample columns
+
+Some functions work on specific columns of the data frame. Define the **column name of the first sample, the number of samples, a pattern in the name of all quality controls (e.g. "QC") and blanks (e.g. "Blank")**. If there are no QC or blank, use NULL for the pattern instead.
+
+```{r specific columns}
+
+all_samples <- get_all_sample_cols(raw_data,
+                                   first_sample_col = "X230828_DLR_neg_extBlank1_001",
+                                   number_of_samples = 18)
+
+blanks <- get_cols(all_samples,
+                   target_word = "Blank")
+
+qc <- get_cols(all_samples, target_word = "QC")
+
+only_samples <- all_samples[!(all_samples %in% c(qc, blanks))]
+
+```
+
+## Negative intensity
+
+Run the following cell to replace negative intensities and zero with NA (not available, missing values for R)
+
+```{r negative intensity and missing values}
+raw_data <- replace_missing_values(raw_data, all_samples)
+```
+
+## Maximum intensity
+
+Run the following cell to calculate the maximum intensities of all columns of samples without blanks and QC.
+
+```{r maximum intensity}
+max_intensity_data <- calc_max_intensity(raw_data, only_samples)
+max_intensity_data$plot
+```
+
+A list *max_intensity_data* will appear on top of the right side. Type on the *Console* at the bottom **max_intensity_data\$max_intensity** and you will see the array with the maximum values. If all values in a row were missing, the maximum is NA. Type on the Console **max_intensity_data\$plot** or **max_intensity_data\$subplot** and you will see the plots on the right side. We will use these plots later.
+
+## Missing values in quality controls
+
+Now we want to count missing values (NA) in the columns of quality control. Run the following cells without any changes.
+
+```{r missing values in qc}
+qc_zero_data <- count_missing_values(raw_data, qc)
+qc_zero_data$plot
+```
+
+A new list called *qc_zero_data* will appear on top of the right side. Type on the Console **qc_zero_data\$missing_values**. You will see the array of the counts of missing values.
+
+## Relative Standard Deviation
+
+At least we calculate the relative standard deviation (RSD) over all features of the quality controls. Run the following cell without any changes.
+
+```{r RSD}
+qc_rsd_data <- calc_RSD(raw_data, qc)
+qc_rsd_data$plot
+```
+
+A new list called *qc_rsd_data* will appear on top of the right side. Type on the Console **qc_rsd_data\$RSD**. You will see the rsd values. If there are less than two values, no standard deviation can be calculated. The values in the array will be set to NA (not available).
+
+## Create overview plot
+
+Now we will put all plots together. Run the following cell without any changes.
+
+```{r create overview}
+fn_out_data <- paste0(substr(fn_in, 1, nchar(fn_in)-4),
+                      "_1_rawdata.csv")
+fn_out_plot <- paste0(substr(fn_in, 1, nchar(fn_in)-4), "_2_plot.png")
+
+result_df <- cbind(raw_data, 
+                   data.frame(
+                     "max.Intensity" = max_intensity_data$max_intensity,
+                     "missing.values" = qc_zero_data$missing_values,
+                     "rsd" = qc_rsd_data$RSD)
+                   )
+
+write.table(result_df, file = fn_out_data, 
+            row.names = FALSE, sep="\t", quote = FALSE,
+            na = "")
+
+overview_plot <- grid.arrange(max_intensity_data$plot, max_intensity_data$subplot, 
+                              qc_zero_data$plot, 
+                              qc_rsd_data$plot + guides(fill = "none"),
+                              qc_rsd_data$subplot,
+                              layout_matrix = matrix(c(1,2,3,3,4,5),
+                                                     nrow = 3, 
+                                                     ncol = 2,
+                                                     byrow = TRUE))
+
+ggsave(filename = fn_out_plot, plot = overview_plot, 
+       device = "png", width = 12, height = 8)
+
+```
+
+The plot will be saved in the same directory of the input text file in the second cell. The name of the plot is a combination of input filename and **\_2_overview.png**. A table with the raw data and added columns of maximum intensity, count of missing values and RSD will be saved as **filename_1_rawdata.txt**. You can see those new files, if you click on the right panel on *Files*.
+
+# Second part: Filter out features
+
+## Filter out features by thresholds
+
+Now open the overview plot and define the **thresholds** of minimum intensity, maximum count of missing values and maximum of RSD in percent. Replace them in the following cell and run it.
+
+```{r filter by threshold}
+data_filtered <- filter_dataframe(result_df,
+                                  colnames = c("max.Intensity",
+                                               "missing.values",
+                                               "rsd"),
+                                  thresholds = c(5*10^5, 1, 35))
+```
+
+### Create plots to control filter process
+
+Run the following cell to plot the data, that was filtered by maximum intensities, missing values and relative standard deviation.
+
+```{r plots for control after filtering}
+
+plot_max_intensity(data_filtered$max.Intensity)
+plot_missing_values(data_filtered$missing.values)
+plot_rsd(data_filtered$rsd)
+
+```
+
+## Filter out features by logical columns
+
+There is an option to filter out features if they do not match with retention time or m.z. of the library. You can only use columns that only contain False or True: MS.MS.assigned, RT.matched, m.z.matched or MS.MS.matched. Fill the column names in *list_of_colnames* and run the cell.
+
+```{r filter by locigal}
+data_filtered <- filter_matched(data_filtered, 
+                                list_of_colnames = c("MS.MS.matched", 
+                                                     "m.z.matched"))
+```
+
+## Optional: Count missing values in samples
+
+To reduce the missing values in sample columns, run the following cell to count them in samples without blanks and QC. The count of missing values will be added to the data frame **data_filtered** at the end and the bar plot will be shown after the cell.
+
+```{r missing values in samples}
+samples_zero_data <- count_missing_values(data_filtered, only_samples)
+
+data_filtered$miss.values.samples <- samples_zero_data$missing_values
+
+samples_zero_data$plot
+```
+
+Replace the threshold for the missing values in samples (default is 0) and run the cell.
+
+```{r filter samples}
+
+data_filtered <- filter_dataframe(data_filtered,
+                                  colnames = c("miss.values.samples"),
+                                  thresholds = c(1),
+                                  modes = c("<="))
+
+plot_missing_values(data_filtered$miss.values.samples)
+```
+
+## Add own feature names
+
+Create customized names as combinations of data frames columns: Alignment.ID = 1, Average.Rt.min = 2, Average.Mz = 3, Metabolite.name = 4. If Metabolite.name is used, "w/o MS2:" will be removed. Type for **colnumbers_to_use** the sequence of numbers to use and run the cell.
+
+```{r feature names}
+data_filtered <- add_feature_names(data_filtered,
+                                   colnumbers_to_use = c(4,2,1),
+                                   remove_wo = TRUE)
+
+```
+
+### Export filtered data frame
+
+Run the following cell to export current data frame as txt file. You can change **separator** (sep) and **missing values** (na).
+
+```{r export filtered data frame}
+
+fn_out <- paste0(substr(fn_in, 1, nchar(fn_in)-4), "_3_filtered.csv")
+
+write.table(data_filtered, file = fn_out, row.names = FALSE, quote = FALSE,
+            sep = "\t",
+            na = "")
+
+```
+
+## Optional: Normalize intensity
+
+If there are different weightings of the samples, the intensities need to be divided by the weights. To load the data frame, that contains part of the sample name in the first column and the weight in the second column, replace the *"filename"* of the text or csv file. After division of the intensities, they will be round to number of **decimals** in the argument list.
+
+```{r normalize intensity}
+df_factors <- read.csv("Daten/Test_231222/Area_cells_neg_test_factors.txt",
+                       header = TRUE,
+                       sep = "\t", dec = ".")
+
+data_filtered <- normalize_intensity(data_filtered, df_factors, decimals = 0)
+
+```
+
+### Export normalized data frame
+
+Run the following cell to export current data frame as txt file. You can change **separator** (sep) and **missing values** (na).
+
+```{r export filtered data frame}
+
+fn_out <- paste0(substr(fn_in, 1, nchar(fn_in)-4), "_4_normalized.csv")
+
+write.table(data_filtered, file = fn_out, row.names = FALSE, quote = FALSE,
+            sep = "\t",
+            na = "")
+
+```
+
+## Optional: Transpose data frame
+
+After the filter process the data frame can be transposed, so that the features will be columns and the samples will be rows. **colnum_of_name** takes the number of the column with feature names in the data frame. If you add your own name by combining columns with the function *add_feature_names*, it is the second column. If you want to use *Metabolite.name*, it is column number 4. If your sample names start with a number, RStudio automatically adds a "X" at the beginning. To remove it after transpose of the data frame, set **remove_X** as *TRUE*.
+
+After transpose of the table a column of the classes can be added. Fill in the list **classes** target words for all classes. If not, delete the parameter. Then run the cell.
+
+```{r transpose data frame}
+
+df_trans <- transpose_df(data_filtered,
+                         colnum_of_name = 2,
+                         all_sample_cols = all_samples,
+                         sort_out = c("Blank"),
+                         classes = c("SMG", "Ground", "QC"),
+                         remove_X = TRUE)
+```
+
+### Export transposed data frame
+
+Run the following cell to export current data frame as txt file. You can change **separator** (sep) and **missing values** (na).
+
+```{r export transposed data frame}
+
+fn_out <- paste0(substr(fn_in, 1, nchar(fn_in)-4), "_5_transposed.csv")
+
+write.table(df_trans, file = fn_out, row.names = FALSE, quote = FALSE,
+            sep = "\t",
+            na = "")
+
+```

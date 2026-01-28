@@ -1,0 +1,40 @@
+*** Instructions ***
+
+=== Installing R and RStudio ===
+If you don't have R and RStudio on your PC, then you need to install it. 
+1. Go to https://cran.uni-muenster.de and follow the instructions to install R
+2. Go to https://posit.co/download/rstudio-desktop/ to install RStudio
+
+=== Install Packages ===
+1. Go to our AAC moodle course, download the directory and copy it to 'Documents' on your PC. 
+
+2. Start RStudio.
+
+3. Create a new project. Go to the menu bar: File -> New Project -> Existing Directory. Browse for the NTAWorkflow directory in 'Documents'. When you go on 'Files' on the right side in RStudio you will see all files of the directory. We will come to those files later.
+
+4. Go to 'Packages' on the right side. Click on 'install', then choose 'Install from: Package Archive File'. Then browse for the file path (Documents/NTAWorkflow), where you have saved the NTAWorkflow.tar.gz file.
+After installing, you will find NTAWorkflow in the list of packages.
+
+
+5. You will need some packages from the internet. In RStudio go to 'Packages' on the right side. Click on 'Install' and choose 'Install from: Repository (CRAN)'. For 'Packages' type in: ggplot2, gridExtra, shiny. Then click on 'install'. After installing you will see ggplot2, gridExtra, shiny in the list in RStudio under 'Packages'
+ 
+6. Save the project, before closing RStudio.
+
+The installing of the packages you only need to do once. Now there are two ways of using the scripts: with the notebook or with the app. For beginners it is easier to use the app.
+
+
+=== Filtering your data with the app ===
+
+1. Start RStudio, if it's not started yet.
+2. On the right side click on 'Files'. If you don't see the files from the NTAWorkflow directory, go to 'File' in the menu bar on top of the window and 'Open project' and browse for the NTAWorkflow directory in documents and click on the file .RProj.
+3. In 'Files' on the right side click on 'App Version' and click on ui.R
+4. The script will be open in the top left window. Don't write anything in this file! In this window on the top right side appeared the button 'Run App'. Click on it to start the App.
+
+
+
+=== Filtering your data with the Notebook ===
+
+For every dataset you should create a directory and put your raw data text files in there. From our AAC moodle course in section 'Informatics' download from directory 'NTAWorkflow' the current version of the notebook (.Rmd) and save it in the same directory of your raw data.
+Start RStudio, go on 'File -> new Project' on the top left. Choose 'Existing Directory' , browse the directory with the notebook, then go on 'Create Project'. If you click on the right side 'Files' you should see the notebook and your raw data text file. Double click on the notebook will open it. Then follow the instructions for the filtering process.
+
+

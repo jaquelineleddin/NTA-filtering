@@ -1,0 +1,87 @@
+# NTA Workflow - Data Filtering without Quality Control Samples
+
+Run the following cell without any changes to load all functions that are needed.
+
+```{r setup}
+library(ggplot2)
+library(NTAWorkflow)
+```
+
+## Load data
+
+In the following cell replace **filename** with the path of your .txt, which you exported from MSDail, e.g. *"C:/Users/Jaqueline/Projects/NTA/Data/area_cells_neg.txt"*. Instead of the whole path you can use a so-called relative path, that begins with your working directory, where your R Project file (.Rproj) is. You can see the working directory on the right panel, if you click on *Files* or over the *Console* at the bottom. E.g. the working directory is *"C:/Users/Jaqueline/Projects/NTA"*, then the filename is only replaced by *"Data/area_cells_neg.txt"*.
+
+After running the following cell on the top right side, a data frame *raw_data* will appear. If you click on the name, RStudio will show you the content of the data frame as in Excel.
+
+```{r load data}
+
+fn_in <- "Daten/Test_231222/Area_cells_neg_test.txt" # enter the path of text file
+raw_data <- load_data(fn_in, drop_cols = c())
+```
+
+## Sample columns
+
+Some functions work on specific columns of the data frame. Define the **column name of the first sample and the number of samples**.
+
+```{r specific columns}
+
+samples <- get_all_sample_cols(raw_data,
+                                   first_sample_col = "X230828_DLR_neg_extBlank1_001", # first column of samples
+                                   number_of_samples = 18)
+
+```
+
+## Replace missing values
+
+Run the following cell to replace negative intensities and zero with NA (not available, missing values for R)
+
+```{r negative intensity and missing values}
+raw_data <- replace_missing_values(raw_data, samples)
+```
+
+## Filter by logical columns
+
+There is an option to filter out features if they do not match with retention time or m.z. of the library. You can only use columns that contain False or True: MS.MS.assigned, RT.matched, m.z.matched or MS.MS.matched. Fill the column names in *list_of_colnames* and run the cell.
+
+```{r filter by locigal}
+data_filtered <- filter_matched(raw_data, 
+                                list_of_colnames = c("m.z.matched"))  
+```
+
+## Count missing values in samples
+
+To reduce the missing values in sample columns, run the following cell to count them. The count of missing values will be added to the data frame **data_filtered** at the end and the bar plot will be shown after the cell.
+
+```{r missing values in samples}
+samples_zero_data <- count_missing_values(data_filtered, samples)
+
+data_filtered$miss.values.samples <- samples_zero_data$missing_values
+
+samples_zero_data$plot
+```
+
+Replace the threshold for the missing values in samples and run the cell.
+
+```{r filter samples}
+
+data_filtered <- filter_dataframe(data_filtered,
+                                  colnames = c("miss.values.samples"),
+                                  thresholds = c(2), # type here, how many missing values are allowed
+                                  modes = c("<="))
+
+plot_missing_values(data_filtered$miss.values.samples)
+```
+
+## Export filtered data frame
+
+Run the following cell to export current data frame as txt file. It will be saved in the same directory of the raw data and has the same name with \*\*\_filtered\*\* append, so the raw data file will not be overwritten.
+
+```{r export filtered data frame}
+
+fn_out <- paste0(substr(fn_in, 1, nchar(fn_in)-4), "_filtered.csv")
+
+write.table(data_filtered, file = fn_out, row.names = FALSE, quote = FALSE,
+            sep = "\t",
+            na = "")
+
+```
